@@ -76,7 +76,11 @@ def getmodrm(mod, rm, content, i):
 
 
 with open('listing_0040_challenge_movs', mode='rb', buffering=0) as f:
-    content = f.read() # returns a class <'bytes'>; content[0] returns int\
+    content = f.read() # returns a class <'bytes'>; content[0] returns int
+
+asm_out = open('output.asm', 'w')
+print('bits 16', file=asm_out)
+# asm_out = None
 
 # content = content[19:]
 # print(list(map(bin, content)))
@@ -108,7 +112,7 @@ while i < len(content) - 1:
             if d == '0':
                 dest, src = src, dest
 
-            print('mov ' + dest + ',' + src)
+            print('mov ' + dest + ',' + src, file=asm_out)
             # result.append('mov ' + dest + ',' + src)
 
         elif getbit(content[i], 0, 7) == '1100011':
@@ -122,7 +126,7 @@ while i < len(content) - 1:
                 src = 'word ' + str(getSignedVal(content[i+2] << 8 | content[i+1], 16))
                 i = i + 2
 
-            print('mov ' + dest + ', ' + src)
+            print('mov ' + dest + ', ' + src, file=asm_out)
 
         elif getbit(content[i], 0, 4) == '1011':
             w, reg = getbit(content[i], 4), getbit(content[i], 5, 8)
@@ -136,7 +140,7 @@ while i < len(content) - 1:
                 imm = getSignedVal(temp_val, 16)
                 i = i + 2
 
-            print('mov ' + dest + ',' + str(imm))
+            print('mov ' + dest + ',' + str(imm), file=asm_out)
             # result.append('mov ' + dest + ',' + str(imm))
 
         elif getbit(content[i], 0, 7) == '1010000':
@@ -148,7 +152,7 @@ while i < len(content) - 1:
                 temp = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
                 i = i + 2
 
-            print('mov ax , [' + str(temp) + ']')
+            print('mov ax , [' + str(temp) + ']', file=asm_out)
 
         elif getbit(content[i], 0, 7) == '1010001':
             w = getbit(content[i], 7)
@@ -159,7 +163,6 @@ while i < len(content) - 1:
                 temp = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
                 i = i + 2
 
-            print('mov [' + str(temp) + '], ax')
+            print('mov [' + str(temp) + '], ax', file=asm_out)
 
-# with open('output.asm', 'w') as o:
-#     print(*result, file=o, sep='\n')
+if asm_out: asm_out.close()
