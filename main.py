@@ -46,7 +46,7 @@ reg_dict_rm = {
     '111': 'bx',
 }
 
-def getbit(val, *rng):
+def getbit(val, *rng) -> str:
     if len(rng) == 1:
         return getbit(val, rng[0], rng[0]+1)
 
@@ -61,7 +61,10 @@ def getSignedVal(val, bit_length):
 
 
 def getmodrm(mod, rm, content, i):
-    if rm != '110':
+    if mod == '00' and rm == '110':
+        temp = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
+        return '[' + str(temp) + ']', i + 2
+    else:
         if mod == '00':
             return '['+ reg_dict_rm[rm] + ']', i
         elif mod == '01':
@@ -70,19 +73,16 @@ def getmodrm(mod, rm, content, i):
         elif mod == '10':
             temp = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
             return '[' + reg_dict_rm[rm] + (str(temp) if temp < 0 else ' + ' + str(temp)) + ']', i + 2
-    else:
-        temp = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
-        return '[' + str(temp) + ']', i + 2
 
 
-with open('listing_0040_challenge_movs', mode='rb', buffering=0) as f:
+with open('listing_0041_add_sub_cmp_jnz', mode='rb', buffering=0) as f:
     content = f.read() # returns a class <'bytes'>; content[0] returns int
 
 asm_out = open('output.asm', 'w')
 print('bits 16', file=asm_out)
-asm_out = None
+# asm_out = None
 
-# content = content[19:]
+# content = content[199:]
 # exit(0)
 
 result = ['bits 16']
@@ -91,73 +91,138 @@ i = -1
 while i < len(content) - 1:
     i = i + 1
 
-    if getbit(content[i], 0, 6) == '100010' or getbit(content[i], 0, 7) == '1100011' or getbit(content[i], 0, 4) == '1011' or getbit(content[i], 0, 7) == '1010000'or getbit(content[i], 0, 7) == '1010001'or getbit(content[i], 0, 8) == '10001110' or getbit(content[i], 0, 8) == '10001100':
+    # if getbit(content[i], 0, 6) == '100010' or getbit(content[i], 0, 7) == '1100011' or getbit(content[i], 0, 4) == '1011' or getbit(content[i], 0, 7) == '1010000'or getbit(content[i], 0, 7) == '1010001'or getbit(content[i], 0, 8) == '10001110' or getbit(content[i], 0, 8) == '10001100':
 
-        if getbit(content[i], 0, 6) == '100010':
-            fb, sb = f'{format(content[i], "b"):0>8}', f'{format(content[i+1], "b"):0>8}'
+    if getbit(content[i], 0, 6) in ('100010','000000','001010','001110'):
+        fb, sb = f'{format(content[i], "b"):0>8}', f'{format(content[i+1], "b"):0>8}'
+        i = i + 1
+        opcode, d, w = fb[:6], fb[6], fb[7]
+        mod, reg, rm = sb[:2], sb[2:5], sb[5:]
+
+        dest = reg_dict[(reg, w)]
+        if mod in ('00', '01', '10'):
+            src, i = getmodrm(mod, rm, content, i)
+        elif mod == '11':
+            src = reg_dict[(rm, w)]
+
+        if d == '0':
+            dest, src = src, dest
+
+        temp_opcode = {'100010':'mov ', '000000':'add ','001010':'sub ','001110':'cmp ' }
+        print(temp_opcode[opcode] + dest + ',' + src, file=asm_out)
+
+    elif getbit(content[i], 0, 7) == '1100011':
+        w, mod, rm = getbit(content[i], 7), getbit(content[i+1], 0, 2), getbit(content[i+1], 5, 8)
+        i = i + 1
+        dest, i = getmodrm(mod, rm, content, i)
+        if w == '0':
+            src = 'byte ' + str(getSignedVal(content[i+1], 8))
             i = i + 1
-            opcode, d, w = fb[:6], fb[6], fb[7]
-            mod, reg, rm = sb[:2], sb[2:5], sb[5:]
+        else:
+            src = 'word ' + str(getSignedVal(content[i+2] << 8 | content[i+1], 16))
+            i = i + 2
 
-            dest = reg_dict[(reg, w)]
-            if mod in ('00', '01', '10'):
-                src, i = getmodrm(mod, rm, content, i)
-            elif mod == '11':
-                src = reg_dict[(rm, w)]
+        print('mov ' + dest + ', ' + src, file=asm_out)
 
-            if d == '0':
-                dest, src = src, dest
+    elif getbit(content[i], 0, 4) == '1011':
+        w, reg = getbit(content[i], 4), getbit(content[i], 5, 8)
+        dest = reg_dict[(reg, w)]
 
-            print('mov ' + dest + ',' + src, file=asm_out)
-
-        elif getbit(content[i], 0, 7) == '1100011':
-            w, mod, rm = getbit(content[i], 7), getbit(content[i+1], 0, 2), getbit(content[i+1], 5, 8)
+        if w == '0':
+            imm = getSignedVal(content[i+1], 8)
             i = i + 1
+        else:
+            temp_val = (content[i+2] << 8) | content[i+1]
+            imm = getSignedVal(temp_val, 16)
+            i = i + 2
+
+        print('mov ' + dest + ',' + str(imm), file=asm_out)
+
+    elif getbit(content[i], 0, 7) == '1010000': # does not handle al/ah
+        w = getbit(content[i], 7)
+        if w == '0':
+            src = getSignedVal(content[i+1], 8)
+            i = i + 1
+        else:
+            src = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
+            i = i + 2
+
+        print('mov ax , [' + str(src) + ']', file=asm_out)
+
+    elif getbit(content[i], 0, 7) == '1010001': # does not handle al/ah
+        w = getbit(content[i], 7)
+        if w == '0':
+            dest = getSignedVal(content[i+1], 8)
+            i = i + 1
+        else:
+            dest = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
+            i = i + 2
+
+        print('mov [' + str(dest) + '], ax', file=asm_out)
+
+    elif getbit(content[i], 0, 6) == '100000':
+        s, w = getbit(content[i], 6), getbit(content[i], 7)
+        mod, marker, rm = getbit(content[i+1], 0, 2), getbit(content[i+1], 2, 5), getbit(content[i+1], 5, 8)
+        i = i + 1
+
+        dest = reg_dict[(rm, w)]
+        if mod in ('00', '01', '10'):
             dest, i = getmodrm(mod, rm, content, i)
-            if w == '0':
-                src = 'byte ' + str(getSignedVal(content[i+1], 8))
-                i = i + 1
+            if s == '0' and w =='1':
+                src, i = getSignedVal((content[i+2] << 8) | content[i+1], 16)
             else:
-                src = 'word ' + str(getSignedVal(content[i+2] << 8 | content[i+1], 16))
-                i = i + 2
-
-            print('mov ' + dest + ', ' + src, file=asm_out)
-
-        elif getbit(content[i], 0, 4) == '1011':
-            w, reg = getbit(content[i], 4), getbit(content[i], 5, 8)
-            dest = reg_dict[(reg, w)]
-
-            if w == '0':
-                imm = getSignedVal(content[i+1], 8)
+                src = getSignedVal(content[i + 1], 8)
                 i = i + 1
-            else:
-                temp_val = (content[i+2] << 8) | content[i+1]
-                imm = getSignedVal(temp_val, 16)
-                i = i + 2
+        elif mod == '11':
+            src = getSignedVal(content[i+1], 8)
+            i = i + 1
 
-            print('mov ' + dest + ',' + str(imm), file=asm_out)
+        src = 'byte ' + str(src)  if w == '0' else 'word ' + str(src)
 
-        elif getbit(content[i], 0, 7) == '1010000':
-            w = getbit(content[i], 7)
-            if w == '0':
-                temp = getSignedVal(content[i+1], 8)
-                i = i + 1
-            else:
-                temp = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
-                i = i + 2
+        temp_opcode_2 = {'000':'add ', '101':'sub ', '111':'cmp '}
+        print(temp_opcode_2[marker] + dest + ', ' + str(src), file=asm_out)
 
-            print('mov ax , [' + str(temp) + ']', file=asm_out)
+    elif getbit(content[i], 0, 7) in ('0000010','0010110','0011110'):
+        opcode, w = getbit(content[i], 0, 7), getbit(content[i], 7)
+        if w == '0':
+            dest = 'al'
+            src = getSignedVal(content[i+1], 8)
+            i = i + 1
+        else:
+            dest = 'ax'
+            src = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
+            i = i + 2
 
-        elif getbit(content[i], 0, 7) == '1010001':
-            w = getbit(content[i], 7)
-            if w == '0':
-                temp = getSignedVal(content[i+1], 8)
-                i = i + 1
-            else:
-                temp = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
-                i = i + 2
+        temp_opcode_3 = {'0000010':'add ','0010110':'sub ','0011110':'cmp '}
+        print(temp_opcode_3[opcode] + dest + ', ' + str(src), file=asm_out)
 
-            print('mov [' + str(temp) + '], ax', file=asm_out)
+    else:
+        temp_opcode_4 ={
+            '01110100': 'je', # jz
+            '01111100': 'jl', # jnge
+            '01111110': 'jle', # jng
+            '01110010' : 'jb', # jnae
+            '01110110' : 'jbe', # jan
+            '01111010' : 'jp', # jpe
+            '01110000' : 'jo',
+            '01111000' : 'js',
+            '01110101' : 'jnz', # jne
+            '01111101' : 'jnl', # jge
+            '01111111' : 'jnle', # jg
+            '01110011' : 'jnb', # jae
+            '01110111' : 'jnbe', # ja
+            '01111011' : 'jnp', # jpo
+            '01110001' : 'jno',
+            '01111001' : 'jns',
+            '11100010' : 'loop',
+            '11100001' : 'loopz', #loope
+            '11100000' : 'loopnz', #loopne
+            '11100011' : 'jcxz'
+        }
+
+        temp = temp_opcode_4[getbit(content[i], 0, 8)] + ' ' + str(getSignedVal(content[i+1], 8))
+        i = i + 1
+        print(temp, file=asm_out)
 
 
 if asm_out: asm_out.close()
