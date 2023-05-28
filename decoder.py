@@ -72,11 +72,11 @@ def getmodrm(mod, rm, content, i):
             temp = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
             return '[' + reg_dict_rm[rm] + (str(temp) if temp < 0 else ' + ' + str(temp)) + ']', i + 2
 
-def readAssembled(fileName, start_bit_index = 0):
+def readAssembled(fileName, offset = 0):
     with open(fileName, mode='rb', buffering=0) as f:
         content = f.read()
 
-    content = content[start_bit_index:]
+    content = content[offset:]
 
     asm_out = [['bits 16']]
 
@@ -85,6 +85,13 @@ def readAssembled(fileName, start_bit_index = 0):
         i = i + 1
         start_ip = i
 
+        # MOV Register/Memory to/from Register
+        #   Register to/from Register; mov ax, bx
+        #   Memory to Register; mov ax, [bx + di - 37] LOAD FROM MEMORY
+        #   Memory from Register; mov [si - 300], cx STORE TO MEMORY
+        # ADD Register/memory with Register to either
+        # SUB Register/Memory and Register to either
+        # CMP Register/Memory and Register
         if getbit(content[i], 0, 6) in ('100010','000000','001010','001110'):
             fb, sb = f'{format(content[i], "b"):0>8}', f'{format(content[i+1], "b"):0>8}'
             i = i + 1
@@ -104,6 +111,9 @@ def readAssembled(fileName, start_bit_index = 0):
             asm_out.append([temp_opcode[opcode], dest, src, i - start_ip + 1])
             # print(temp_opcode[opcode] + dest + ',' + src, file=asm_out)
 
+        # MOV Immediate to Register/Memory
+        #   Immediate to Register; mov ax, 10
+        #   Immediate to Memory; mov [di + 901], word 347 STORE TO MEMORY
         elif getbit(content[i], 0, 7) == '1100011':
             w, mod, rm = getbit(content[i], 7), getbit(content[i+1], 0, 2), getbit(content[i+1], 5, 8)
             i = i + 1
@@ -118,6 +128,7 @@ def readAssembled(fileName, start_bit_index = 0):
             asm_out.append(['mov', dest, src,i - start_ip + 1])
             # print('mov ' + dest + ', ' + src, file=asm_out)
 
+        # MOV immediate to register mov cx, 12; mov dx, -3948
         elif getbit(content[i], 0, 4) == '1011':
             w, reg = getbit(content[i], 4), getbit(content[i], 5, 8)
             dest = reg_dict[(reg, w)]
@@ -133,6 +144,7 @@ def readAssembled(fileName, start_bit_index = 0):
             asm_out.append(['mov', dest, str(imm),i - start_ip + 1])
             # print('mov ' + dest + ',' + str(imm), file=asm_out)
 
+        # MOV Memory to accumulator
         elif getbit(content[i], 0, 7) == '1010000': # does not handle al/ah
             w = getbit(content[i], 7)
             if w == '0':
@@ -145,6 +157,7 @@ def readAssembled(fileName, start_bit_index = 0):
             asm_out.append(['mov', 'ax', '[' + str(src) + ']',i - start_ip + 1])
             # print('mov ax , [' + str(src) + ']', file=asm_out)
 
+        # MOV Accumulator to Memory
         elif getbit(content[i], 0, 7) == '1010001': # does not handle al/ah
             w = getbit(content[i], 7)
             if w == '0':
@@ -157,6 +170,9 @@ def readAssembled(fileName, start_bit_index = 0):
             asm_out.append(['mov', '[' + str(dest) + ']', 'ax',i - start_ip + 1])
             # print('mov [' + str(dest) + '], ax', file=asm_out)
 
+        # ADD Immediate to Register/Memory
+        # SUB Immediate to Register/Memory
+        # CMP Immediate to Register/Memory
         elif getbit(content[i], 0, 6) == '100000':
             s, w = getbit(content[i], 6), getbit(content[i], 7)
             mod, marker, rm = getbit(content[i+1], 0, 2), getbit(content[i+1], 2, 5), getbit(content[i+1], 5, 8)
@@ -185,13 +201,16 @@ def readAssembled(fileName, start_bit_index = 0):
             asm_out.append([temp_opcode_2[marker], dest, str(src),i - start_ip + 1])
             # print(temp_opcode_2[marker] + dest + ', ' + str(src), file=asm_out)
 
+        # ADD Immediate to Accumulator
+        # SUB Immediate to Accumulator
+        # CMP Immediate to Accumulator
         elif getbit(content[i], 0, 7) in ('0000010','0010110','0011110'):
             opcode, w = getbit(content[i], 0, 7), getbit(content[i], 7)
             if w == '0':
                 dest = 'al'
                 src = getSignedVal(content[i+1], 8)
                 i = i + 1
-            else:
+            else: # Never happens for CMP
                 dest = 'ax'
                 src = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
                 i = i + 2
@@ -233,5 +252,5 @@ def readAssembled(fileName, start_bit_index = 0):
 
 
 if __name__ == '__main__':
-    decoded = readAssembled('listing_0049_conditional_jumps', start_bit_index = 0)
+    decoded = readAssembled('listing_0051_memory_mov', offset = 0)
     print(*decoded, sep='\n')
