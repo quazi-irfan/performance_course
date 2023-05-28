@@ -23,15 +23,24 @@ flag_reg = {
     'c': 0   # carry
 }
 
-reg_names = ['ax','bx','cx','dx','sp','bp','si','di','ah','al','bh','bl','ch','cl','dh','dl'
+reg_names = ['ax','bx','cx','dx','sp','bp','si','di',
+             'ah','al','bh','bl','ch','cl','dh','dl'
              'ss','ds','es']
+
+ip_reg = 0
 
 # from array import array
 # reg = array('I', [0,0,0,0,0,0,0,0]) # ax, bx, cx, dx, sp, bp, si, di
 
-decoded = decoder.readAssembled(fileName='listing_0046_add_sub_cmp')
+decoded = decoder.readAssembled(fileName='listing_0049_conditional_jumps')[1:]
 
-for d in decoded:
+i = -1
+while i < len(decoded) - 1:
+    i += 1
+
+    d = decoded[i]
+
+    ip_reg += d[-1]
 
     if d[0] == 'mov':
         if d[1] in reg_names and d[2] not in reg_names: # immediate to reg
@@ -73,9 +82,19 @@ for d in decoded:
         flag_reg['s'] = decoder.getbit(reg[d[1]], 0, bit_len=16)
     elif d[0] == 'cmp':
         flag_reg['z'] = 0 if (int(reg[d[1]]) - int(reg[d[2]])) else 1
+    elif d[0] == 'jnz':
+        if flag_reg['z'] == 0: # last arithmatic resulted in zero
+            ip_reg += int(d[1])
+
+            temp = -int(d[1])
+            while temp:
+                temp = temp - decoded[i][-1]
+                i = i - 1
+
+
 
 print(reg)
 print(flag_reg)
+print(ip_reg)
 
-# add, (cmp, sub) same instruction, cmp is subtract
-# sign flag, zero flag zf sf
+# IP instruction pointer is modified before the instruction is executed

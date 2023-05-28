@@ -13,9 +13,6 @@
 # R/M depends on how MOD field is set
 # since MOD is 11, REG will identify another register
 
-# def print(string, file):
-#     file.append(string)
-
 reg_dict = {
     ('000', '0'): 'al',
     ('001', '0'): 'cl',
@@ -75,22 +72,18 @@ def getmodrm(mod, rm, content, i):
             temp = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
             return '[' + reg_dict_rm[rm] + (str(temp) if temp < 0 else ' + ' + str(temp)) + ']', i + 2
 
-def readAssembled(fileName):
+def readAssembled(fileName, start_bit_index = 0):
     with open(fileName, mode='rb', buffering=0) as f:
-        content = f.read() # returns a class <'bytes'>; content[0] returns int
+        content = f.read()
 
-    # asm_out = open('output.asm', 'w')
-    # print('bits 16', file=asm_out)
-    # asm_out = None # set this var
-    # content = content[12:]
-    # exit(0)
+    content = content[start_bit_index:]
 
     asm_out = [['bits 16']]
-    # asm_out = None
 
     i = -1
     while i < len(content) - 1:
         i = i + 1
+        start_ip = i
 
         if getbit(content[i], 0, 6) in ('100010','000000','001010','001110'):
             fb, sb = f'{format(content[i], "b"):0>8}', f'{format(content[i+1], "b"):0>8}'
@@ -108,7 +101,7 @@ def readAssembled(fileName):
                 dest, src = src, dest
 
             temp_opcode = {'100010':'mov', '000000':'add','001010':'sub','001110':'cmp' }
-            asm_out.append([temp_opcode[opcode], dest, src])
+            asm_out.append([temp_opcode[opcode], dest, src, i - start_ip + 1])
             # print(temp_opcode[opcode] + dest + ',' + src, file=asm_out)
 
         elif getbit(content[i], 0, 7) == '1100011':
@@ -122,7 +115,7 @@ def readAssembled(fileName):
                 src = str(getSignedVal(content[i+2] << 8 | content[i+1], 16)) # 'word ' + str(getSignedVal(content[i+2] << 8 | content[i+1], 16))
                 i = i + 2
 
-            asm_out.append(['mov', dest, src])
+            asm_out.append(['mov', dest, src,i - start_ip + 1])
             # print('mov ' + dest + ', ' + src, file=asm_out)
 
         elif getbit(content[i], 0, 4) == '1011':
@@ -137,7 +130,7 @@ def readAssembled(fileName):
                 imm = getSignedVal(temp_val, 16)
                 i = i + 2
 
-            asm_out.append(['mov', dest, str(imm)])
+            asm_out.append(['mov', dest, str(imm),i - start_ip + 1])
             # print('mov ' + dest + ',' + str(imm), file=asm_out)
 
         elif getbit(content[i], 0, 7) == '1010000': # does not handle al/ah
@@ -149,7 +142,7 @@ def readAssembled(fileName):
                 src = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
                 i = i + 2
 
-            asm_out.append(['mov', 'ax', '[' + str(src) + ']'])
+            asm_out.append(['mov', 'ax', '[' + str(src) + ']',i - start_ip + 1])
             # print('mov ax , [' + str(src) + ']', file=asm_out)
 
         elif getbit(content[i], 0, 7) == '1010001': # does not handle al/ah
@@ -161,7 +154,7 @@ def readAssembled(fileName):
                 dest = getSignedVal((content[i + 2] << 8) | content[i + 1], 16)
                 i = i + 2
 
-            asm_out.append(['mov', '[' + str(dest) + ']', 'ax'])
+            asm_out.append(['mov', '[' + str(dest) + ']', 'ax',i - start_ip + 1])
             # print('mov [' + str(dest) + '], ax', file=asm_out)
 
         elif getbit(content[i], 0, 6) == '100000':
@@ -179,7 +172,7 @@ def readAssembled(fileName):
                     src = getSignedVal(content[i + 1], 8)
                     i = i + 1
             elif mod == '11':
-                if w == '1':
+                if s+w == '01':
                     src = getSignedVal((content[i+2] << 8) | content[i+1], 16)
                     i = i + 2
                 else:
@@ -189,7 +182,7 @@ def readAssembled(fileName):
             src = str(src) # 'byte ' + str(src) if w == '0' else 'word ' + str(src)
 
             temp_opcode_2 = {'000':'add', '101':'sub', '111':'cmp'}
-            asm_out.append([temp_opcode_2[marker], dest, str(src)])
+            asm_out.append([temp_opcode_2[marker], dest, str(src),i - start_ip + 1])
             # print(temp_opcode_2[marker] + dest + ', ' + str(src), file=asm_out)
 
         elif getbit(content[i], 0, 7) in ('0000010','0010110','0011110'):
@@ -204,7 +197,7 @@ def readAssembled(fileName):
                 i = i + 2
 
             temp_opcode_3 = {'0000010':'add','0010110':'sub','0011110':'cmp'}
-            asm_out.append([temp_opcode_3[opcode], dest, str(src)])
+            asm_out.append([temp_opcode_3[opcode], dest, str(src),i - start_ip + 1])
             # print(temp_opcode_3[opcode] + dest + ', ' + str(src), file=asm_out)
 
         else:
@@ -230,17 +223,15 @@ def readAssembled(fileName):
                 '11100000': 'loopnz', #loopne
                 '11100011': 'jcxz'
             }
-
-            asm_out.append([temp_opcode_4[getbit(content[i], 0, 8)], str(getSignedVal(content[i+1], 8))])
-            # print(temp_opcode_4[getbit(content[i], 0, 8)] + ' ' + str(getSignedVal(content[i+1], 8)), file=asm_out)
+            opcode = getbit(content[i], 0, 8)
+            dest = str(getSignedVal(content[i+1], 8))
             i = i + 1
+            asm_out.append([temp_opcode_4[opcode], dest, i - start_ip + 1])
+            # print(temp_opcode_4[getbit(content[i], 0, 8)] + ' ' + dest, file=asm_out)
 
     return asm_out
 
-# if asm_out: asm_out.close()
-# del print
-# print(asm_out)
 
 if __name__ == '__main__':
-    # del print
-    print(*readAssembled('listing_0046_add_sub_cmp'), sep='\n')
+    decoded = readAssembled('listing_0049_conditional_jumps', start_bit_index = 0)
+    print(*decoded, sep='\n')
