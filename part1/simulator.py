@@ -1,4 +1,4 @@
-import decoder
+from part1 import decoder
 
 reg = {
     'ax': 0b0000_0000_0000_0000,
@@ -23,9 +23,19 @@ flag_reg = {
     'c': 0   # carry
 }
 
+# sp stack pointer
+# bp base pointer
+# si source index
+# di destination index
+
+# segment registers
+# cs code segment
+# ds data segment
+# ss stack segment
+# es extra segment
 reg_names = ['ax','bx','cx','dx','sp','bp','si','di',
              'ah','al','bh','bl','ch','cl','dh','dl'
-             'ss','ds','es']
+             'ss','ds','es', 'cs']
 
 ip_reg = 0
 
@@ -93,7 +103,7 @@ while i < len(decoded) - 1:
         if d[2] in reg_names:
             reg[d[1]] = int(reg[d[1]]) + int(reg[d[2]])
         else:
-            reg[d[1]] = int(reg[d[1]]) + int(d[2])
+            reg[d[1]] = int(reg[d[1]]) + int(d[2])  # fails for listing_53 because add bx, word [bp + si]; expecting immediate value, ie. add bx, 100
 
         flag_reg['z'] = 0 if reg[d[1]] else 1
         flag_reg['s'] = decoder.getbit(reg[d[1]], 0, bit_len=16)
@@ -119,3 +129,16 @@ while i < len(decoded) - 1:
 print(reg)
 print(flag_reg)
 print(ip_reg)
+
+# push ip_reg is not legal
+# push ax
+# call 100
+# pop ax
+
+# ret ; to return from a called function
+
+# Calling convention are two rules,
+# who is responsible for push and pop
+# pass parameter to a function; i.e. parameter needs to be in BX, or maybe parameter needs to be in stack
+
+# if you want
