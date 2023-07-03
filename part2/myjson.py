@@ -236,7 +236,7 @@ def value():
     return val
 
 
-def load(data):
+def loads(data):
     global d, i, s
     d = data
     i = 0
