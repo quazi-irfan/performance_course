@@ -55,6 +55,6 @@ def generate_hd_points_and_distances(n, seed, output_json, output_hd):
 
 
 import time
-generate_hd_points_and_distances(1000, int(time.time()), 'json_points', 'distances')
+generate_hd_points_and_distances(100, int(time.time()), 'json_points', 'distances')
 
 

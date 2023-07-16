@@ -3,12 +3,17 @@ import haversine
 cpu_freq = perf.get_cpu_freq()
 print('CPU Freq', cpu_freq)
 
+import traceback
+
 def print_cpu_tick(func):
     def wrapper(*args, **kwargs):
         start = perf.get_cpu_tick()
         f = func(*args, **kwargs)
         end = perf.get_cpu_tick()
-        print(func.__name__ +'() took', end - start, 'cycles;', round((end - start)/ cpu_freq * 1000,5) ,'ms')
+        func_stack = [i.name for i in traceback.extract_stack()]
+        print(func_stack)
+        print('\t' * int(len(func_stack)-2) +
+              func.__code__.co_name + str(args) +' took', end - start, 'cycles;', round((end - start)/ cpu_freq * 1000,5) ,'ms')
         return f
     return wrapper
 
@@ -45,6 +50,5 @@ def main():
     result = sum(json_content)
     print('Ave haversine dist', result[0], 'for', result[1],'points')
 
-
-main()
-
+if __name__ == '__main__':
+    main()
