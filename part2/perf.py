@@ -17,9 +17,39 @@ c_lib.ReadOSTimer.restype = ctypes.c_ulonglong
 c_lib.GetCPUFreq.restype = ctypes.c_ulonglong
 c_lib.GetRTDSCCycleCount.argtypes = [ctypes.c_uint]
 
-# used by other modules
+# used by other modules; perf.get_cpu_tick()
 get_cpu_freq = c_lib.GetCPUFreq
 get_cpu_tick = c_lib.ReadCPUTimer
+
+class Profiler:
+    def __init__(self):
+        self.cpu_freq = get_cpu_freq()
+        self.blocks = {}
+
+    def result(self):
+        total_ticks = 0
+        for block_name, block_measurements in self.blocks.items():
+            block_ticks = (block_measurements[1] - block_measurements[0])
+            block_measurements.append(block_ticks)
+            total_ticks += block_ticks
+
+        for block_name, block_measurements in self.blocks.items():
+            print(block_name, str(round(block_measurements[-1]/self.cpu_freq * 1000, 2)) + ' ms; ', str(round(block_measurements[-1]/total_ticks,3)) + '%')
+
+
+class ProfileBlock:
+    def __init__(self, name, profiler):
+        self.name = name
+        self.profiler = profiler
+        self.profiler.blocks[name] = []
+
+    def __enter__(self):
+        block_start = get_cpu_tick()
+        self.profiler.blocks[self.name].append(block_start)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        block_end = get_cpu_tick()
+        self.profiler.blocks[self.name].append(block_end)
 
 if __name__ == '__main__':
     print('#1')

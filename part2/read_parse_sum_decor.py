@@ -12,7 +12,6 @@ def print_cpu_tick(func):
         f = func(*args, **kwargs)
         end = perf.get_cpu_tick()
 
-
         func_stack = [i.name + '() > ' for i in traceback.extract_stack() if i.name not in ('wrapper', '<module>')]
         # print(func_stack)
         # func_stack = ''.join(map(str, func_stack))
