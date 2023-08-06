@@ -6,7 +6,7 @@
 # 0.8824529647827148
 # 73.65929889678955
 
-import json, time, myjson
+import json, time, myjson, json_parser
 import perf
 import haversine
 cpu_freq = perf.get_cpu_freq()
@@ -17,8 +17,10 @@ with open('json_points', encoding='utf-8') as f:
 read_end = perf.get_cpu_tick()
 
 parse_start = perf.get_cpu_tick()
-# py_dict2 = myjson.load(d)
-py_dict2 = json.loads(d)
+# py_dict2 = myjson.loads(d)
+py_dict2 = json_parser.loads(d)
+# py_dict2 = json.loads(d)
+# print(py_dict2['pairs'][-1])
 parse_end = perf.get_cpu_tick()
 
 sum_start = perf.get_cpu_tick()

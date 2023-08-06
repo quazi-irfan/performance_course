@@ -76,16 +76,30 @@ def get_next_token():
         return Json_Token(Token_Type.string_literal, str(content[start:pos-1]))
 
     elif content[pos] in ('-','0','1','2','3','4', '5','6','7','8','9'):
+        # neg = False
+        # if content[pos] == '-':
+        #     neg = True
+        #     pos += 1
+
         start = pos
 
-        pos += 1
-        while pos < len(content) and content[pos] in ('0','1','2','3','4', '5','6','7','8','9', '.', 'e'):
+        while pos < len(content) and content[pos] in ('0','1','2','3','4', '5','6','7','8','9', '.', 'e','-'):
+            # if content[pos] == '0':
+            #     start += 1
             pos += 1
 
-        if '.' in content[start:pos]:
-            value = float(eval(content[start:pos]))
-        else:
-            value = int(eval(content[start:pos]))
+        # try:
+        value = float(eval(content[start:pos]))
+        # except Exception as e:
+        #     print(content[start:pos])
+        #     exit()
+        # number_str = content[start:pos]
+        # # if '.' in content[start:pos]:
+        # value = float(eval(number_str if number_str[-1] != 'e' else number_str[:len(number_str)-1]))
+        # if neg:
+        #     value *= -1
+        # # else:
+        # #     value = int(eval(number_str))
 
         return Json_Token(Token_Type.number, value)
 

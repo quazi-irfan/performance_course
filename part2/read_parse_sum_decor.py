@@ -4,16 +4,20 @@ cpu_freq = perf.get_cpu_freq()
 print('CPU Freq', cpu_freq)
 
 import traceback
+import inspect
 
 def print_cpu_tick(func):
     def wrapper(*args, **kwargs):
         start = perf.get_cpu_tick()
         f = func(*args, **kwargs)
         end = perf.get_cpu_tick()
-        func_stack = [i.name for i in traceback.extract_stack()]
-        print(func_stack)
-        print('\t' * int(len(func_stack)-2) +
-              func.__code__.co_name + str(args) +' took', end - start, 'cycles;', round((end - start)/ cpu_freq * 1000,5) ,'ms')
+
+
+        func_stack = [i.name + '() > ' for i in traceback.extract_stack() if i.name not in ('wrapper', '<module>')]
+        # print(func_stack)
+        # func_stack = ''.join(map(str, func_stack))
+        print('\t' * int(len(func_stack)-1) + ''.join(map(str, func_stack)) +
+              func.__code__.co_name + str(args) + ' took', end - start, 'cycles;', round((end - start)/ cpu_freq * 1000,5) ,'ms')
         return f
     return wrapper
 

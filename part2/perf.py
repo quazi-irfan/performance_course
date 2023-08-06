@@ -17,6 +17,7 @@ c_lib.ReadOSTimer.restype = ctypes.c_ulonglong
 c_lib.GetCPUFreq.restype = ctypes.c_ulonglong
 c_lib.GetRTDSCCycleCount.argtypes = [ctypes.c_uint]
 
+# used by other modules
 get_cpu_freq = c_lib.GetCPUFreq
 get_cpu_tick = c_lib.ReadCPUTimer
 
