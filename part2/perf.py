@@ -33,8 +33,12 @@ class Profiler:
             block_measurements.append(block_ticks)
             total_ticks += block_ticks
 
+        print('Total time:', str(round(total_ticks / self.cpu_freq * 1000, 3)), 'ms; CPU Freq ' + str(self.cpu_freq))
         for block_name, block_measurements in self.blocks.items():
-            print(block_name, str(round(block_measurements[-1]/self.cpu_freq * 1000, 2)) + ' ms; ', str(round(block_measurements[-1]/total_ticks,3)) + '%')
+            print(block_name,
+                  str(round(block_measurements[-1]/self.cpu_freq * 1000, 2)) + ' ms;',
+                  str(round(block_measurements[-1]/total_ticks * 100,2)) + '%'
+                  )
 
 
 class ProfileBlock:
